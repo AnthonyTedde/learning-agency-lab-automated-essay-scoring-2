@@ -15,6 +15,7 @@ MATPLOTBLUE: str = "#1f77b4"
 SEED: int = 1010
 DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
 DEBERTA_V3_CKPT: str = "microsoft/deberta-v3-base"
+DISTILBERT: str = "distilbert/distilbert-base-uncased"
 NUM_LABELS: str = 5
 DATALOADER_BATCH: str = 64
 
