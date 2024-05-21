@@ -13,3 +13,4 @@ transformers==4.40.2
 sentencepiece==0.2.0
 peft==0.10.0
 setfit==1.0.3
+lightgbm==4.3.0
