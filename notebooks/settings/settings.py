@@ -16,7 +16,7 @@ SEED: int = 1010
 DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
 DEBERTA_V3_CKPT: str = "microsoft/deberta-v3-base"
 DISTILBERT: str = "distilbert/distilbert-base-uncased"
-NUM_LABELS: str = 5
+NUM_LABELS: str = 6
 DATALOADER_BATCH: str = 64
 
 
@@ -95,7 +95,7 @@ def configuration_builder(
     return ConfigurationSetting(
         name=environment_name,
         model_ckpt=model_ckpt,
-        num_labels=5,
+        num_labels=NUM_LABELS,
         n_worker=n_worker,
         plot_color=plot_color,
         seed=seed,
