@@ -18,6 +18,7 @@ DEBERTA_V3_CKPT: str = "microsoft/deberta-v3-base"
 DISTILBERT: str = "distilbert/distilbert-base-uncased"
 NUM_LABELS: str = 6
 DATALOADER_BATCH: str = 64
+TARGET = "score"
 
 
 @dataclass(frozen=True)
@@ -45,8 +46,11 @@ class ConfigurationSetting:
     seed: int
     data_path: Optional[Path]
     device: str
+    local: bool
     torch_device: torch.device = field(init=False)
     dataloader_batch: int = DATALOADER_BATCH
+    training_proportion_cv: float = field(default=0.7)
+    target: str = field(default=TARGET)
 
     def __post_init__(self):
         """
@@ -82,16 +86,19 @@ def configuration_builder(
         environment_name = DATABRICKS_STR
         n_worker = 8
         data_path = None
+        local = False
     elif os.getenv("KAGGLE_KERNEL_RUN_TYPE"):
         environment_name = KAGGLE_STR
         n_worker = 2
         data_path = Path(
             "/kaggle/input/learning-agency-lab-automated-essay-scoring-2"
         )
+        local = False
     else:
         environment_name = LOCAL_STR
         n_worker = math.floor(os.cpu_count() * 3 / 8)  # type: ignore
         data_path = Path("../data")
+        local = True
     return ConfigurationSetting(
         name=environment_name,
         model_ckpt=model_ckpt,
@@ -100,5 +107,6 @@ def configuration_builder(
         plot_color=plot_color,
         seed=seed,
         data_path=data_path,
-        device="cpu" if device is None else device
+        device="cpu" if device is None else device,
+        local=local,
     )
