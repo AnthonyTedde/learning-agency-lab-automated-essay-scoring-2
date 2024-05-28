@@ -1,3 +1,13 @@
+from dataclasses import dataclass, field
+from lightgbm import Dataset as LGBMDataSet
+from lightgbm import early_stopping, cv, LGBMClassifier
+import optuna
+from optuna.samplers import TPESampler
+import numpy as np
+from .modeling import TargetTransformer
+from typing import List, Any, Callable
+
+
 def wrap_param(trial=None, refit=False, config=None):
     """
     Generate LightGBM parameters based on given configuration, trial, and refit flags.
@@ -51,3 +61,67 @@ def wrap_param(trial=None, refit=False, config=None):
     else:
         params |= {"task": "predict"}
     return params
+
+@dataclass
+class LGBMCVArgs:
+
+    # TODO: Interface class to fix the mandatory columns.
+
+    params_fct: Callable[..., Any]
+    callbacks: List[Callable[..., Any]]
+    config:Any
+    training_set:Any = field(init=False)
+    nfold: int = field(default=10)
+    stratified:bool = field(default=True)
+    num_boost_round: int = field(default=1000)
+
+    def set_training_data(self, data):
+        self.training_set=data
+
+    def run(self, trial):
+        reg_cv = cv(
+            params=self.params_fct(trial, config=self.config),
+            train_set=self.training_set,
+            num_boost_round=self.num_boost_round,  # == num_iterations
+            nfold=self.nfold,
+            stratified=self.stratified,
+            callbacks=self.callbacks,
+            return_cvbooster=True,
+        )
+        trial.set_user_attr("num_iterations", reg_cv.get("cvbooster").best_iteration)
+        return np.min(
+            np.add(
+                reg_cv.get("valid multi_logloss-mean"),
+                reg_cv.get("valid multi_logloss-stdv")
+            )
+        )
+
+
+class LGBMTraining:
+    study:optuna.study.Study = None
+    def __init__(self, X_training, y_training, training_strategy, sampler, transformer=None):
+        # TODO: Scaler
+        if transformer:
+            y_training = transformer.fit_transform(y_training)
+
+        self.training_set = LGBMDataSet(
+            data=X_training,
+            label=y_training,
+            free_raw_data=False
+        )
+        self.training_strategy = training_strategy
+        self.training_strategy.set_training_data(self.training_set)
+        self.sampler = sampler
+
+
+    def objective(self):
+        return self.training_strategy.run
+
+    def train(self, n_trials=10, study_name="default"):
+        self.study = optuna.create_study( study_name=study_name, sampler=self.sampler, )
+        self.study.optimize(func=self.objective(), n_trials=n_trials, show_progress_bar=True, )
+
+    def __getattr__(self, item):
+        if self.study:
+            getattr(self.study, item)
+        #
